@@ -65,7 +65,7 @@ else:
     print("=> no checkpoint found at '{}'".format(ckpt_path))
 
 # %%
-image_train, label_train, image_val, label_val = image_fetch(f"./imagenette2-160/train")
+image_train, label_train, image_val, label_val = image_fetch(cfg["dataset_path"])
 val_dataset = ClusterDataset(image_val, label_val)
 
 dataloader = DataLoader(val_dataset,

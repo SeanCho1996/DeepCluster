@@ -25,7 +25,7 @@ exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=30, g
 criterion = nn.CrossEntropyLoss()
 
 # %%
-image_train, label_train, image_val, label_val = image_fetch(f"./imagenette2-160/train")
+image_train, label_train, image_val, label_val = image_fetch(cfg["dataset_path"])
 train_dataset = ClusterDataset(image_train, label_train)
 val_dataset = ClusterDataset(image_val, label_val)
 
