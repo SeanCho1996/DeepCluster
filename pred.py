@@ -5,15 +5,14 @@ from shutil import rmtree, copy
 
 import numpy as np
 import torch
-from sklearn.metrics.cluster import normalized_mutual_info_score
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
 from cfg import cfg
-from clustering import Kmeans, arrange_clustering, cluster_assign
+from clustering import Kmeans
 from dataset import ClusterDataset, image_fetch
 from model import vgg16
-from utils import AverageMeter, Logger, UnifLabelSampler
+from utils import AverageMeter
 
 # %%
 def compute_features(dataloader, model, N):
@@ -74,7 +73,7 @@ dataloader = DataLoader(val_dataset,
                         shuffle=False)
 
 # %%
-deepcluster = Kmeans(10)
+deepcluster = Kmeans(cfg["num_classes"])
 
 # %%
 model.top_layer = None

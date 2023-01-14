@@ -1,4 +1,4 @@
-# %%
+# %% dependencies
 import os
 import time
 
@@ -14,10 +14,10 @@ from dataset import ClusterDataset, image_fetch
 from model import vgg16
 from utils import AverageMeter, Logger, UnifLabelSampler
 
-# %%
+# %% init model (and model utils)
 model = vgg16(out=cfg["num_classes"])
 fd = int(model.top_layer.weight.size()[1])
-model.top_layer = None
+model.top_layer = None  # Use vgg to extract features, so the classifier is discarded for now
 
 optimizer_ft = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
 exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=30, gamma=0.1)
@@ -27,26 +27,26 @@ criterion = nn.CrossEntropyLoss()
 # %%
 image_train, label_train, image_val, label_val = image_fetch(cfg["dataset_path"])
 train_dataset = ClusterDataset(image_train, label_train)
-val_dataset = ClusterDataset(image_val, label_val)
 
 dataloader = DataLoader(train_dataset,
                         batch_size=cfg["batch_size"],
                         num_workers=8,
                         shuffle=False)
 
-deepcluster = Kmeans(10)
+deepcluster = Kmeans(cfg["num_classes"])
 cluster_log = Logger(os.path.join("./", 'clusters.log'))
 
 # %%
 def train_vgg(loader, model, crit, opt, epoch):
     """Training of the CNN.
-        Args:
-            loader (torch.utils.data.DataLoader): Data loader
-            model (nn.Module): CNN
-            crit (torch.nn): loss
-            opt (torch.optim.SGD): optimizer for every parameters with True
-                                   requires_grad in model except top layer
-            epoch (int)
+
+    Args:
+        loader (torch.utils.data.DataLoader): Data loader
+        model (nn.Module): CNN
+        crit (torch.nn): loss
+        opt (torch.optim.SGD): optimizer for every parameters with True
+                                requires_grad in model except top layer
+        epoch (int)
     """
     batch_time = AverageMeter()
     losses = AverageMeter()
@@ -168,8 +168,8 @@ for epoch in range(200):
 
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=2,
-        num_workers=2,
+        batch_size=cfg["batch_size"],
+        num_workers=8,
         sampler=sampler,
         pin_memory=True,
     )
@@ -185,6 +185,7 @@ for epoch in range(200):
     # train network with clusters as pseudo-labels
     end = time.time()
     loss = train_vgg(train_dataloader, model, criterion, optimizer_ft, epoch)
+    exp_lr_scheduler.step()
 
     # print log
     if True:
