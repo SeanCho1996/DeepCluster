@@ -15,7 +15,7 @@ from model import vgg16
 from utils import AverageMeter, Logger, UnifLabelSampler
 
 # %% init model (and model utils)
-model = vgg16(out=cfg["num_classes"])
+model = vgg16(out=cfg["num_classes"])  # model = vgg16(sobel=True, out=cfg["num_classes"])
 fd = int(model.top_layer.weight.size()[1])
 model.top_layer = None  # Use vgg to extract features, so the classifier is discarded for now
 
@@ -24,7 +24,7 @@ exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=30, g
 
 criterion = nn.CrossEntropyLoss()
 
-# %%
+# %% data process
 image_train, label_train, image_val, label_val = image_fetch(cfg["dataset_path"])
 train_dataset = ClusterDataset(image_train, label_train)
 
@@ -63,6 +63,7 @@ def train_vgg(loader, model, crit, opt, epoch):
         lr=0.05,
         weight_decay=10**-5,
     )
+    # optimizer_tl = torch.optim.Adam(filter(lambda p: p.requires_grad, model.top_layer.parameters()), lr=1e-4)
 
     end = time.time()
     for i, (input_tensor, target) in enumerate(loader):
@@ -113,7 +114,17 @@ def train_vgg(loader, model, crit, opt, epoch):
     return losses.avg
 
 
-def compute_features(dataloader, model, N):
+def compute_features(dataloader:DataLoader, model:nn.Module, N:int):
+    """compute features using CNN feature extraction modules
+
+    Args:
+        dataloader (DataLoader): test dataset loader
+        model (nn.Module): cnn model
+        N (int): num classes
+
+    Returns:
+        numpy.ndarray: features obtained by CNN
+    """
     print('Compute features')
     batch_time = AverageMeter()
     end = time.time()
@@ -142,7 +153,7 @@ def compute_features(dataloader, model, N):
                   .format(i, len(dataloader), batch_time=batch_time))
     return features
 
-# %%
+# %% train epochs
 for epoch in range(200):
     end = time.time()
 
@@ -188,21 +199,20 @@ for epoch in range(200):
     exp_lr_scheduler.step()
 
     # print log
-    if True:
-        print('###### Epoch [{0}] ###### \n'
-                'Time: {1:.3f} s\n'
-                'Clustering loss: {2:.3f} \n'
-                'ConvNet loss: {3:.3f}'
-                .format(epoch, time.time() - end, clustering_loss, loss))
-        try:
-            nmi = normalized_mutual_info_score(
-                arrange_clustering(deepcluster.images_lists),
-                arrange_clustering(cluster_log.data[-1])
-            )
-            print('NMI against previous assignment: {0:.3f}'.format(nmi))
-        except IndexError:
-            pass
-        print('####################### \n')
+    print('###### Epoch [{0}] ###### \n'
+            'Time: {1:.3f} s\n'
+            'Clustering loss: {2:.3f} \n'
+            'ConvNet loss: {3:.3f}'
+            .format(epoch, time.time() - end, clustering_loss, loss))
+    try:
+        nmi = normalized_mutual_info_score(
+            arrange_clustering(deepcluster.images_lists),
+            arrange_clustering(cluster_log.data[-1])
+        )
+        print('NMI against previous assignment: {0:.3f}'.format(nmi))
+    except IndexError:
+        pass
+    print('####################### \n')
     # save running checkpoint
     torch.save({'epoch': epoch + 1,
                 'arch': "VGG16",

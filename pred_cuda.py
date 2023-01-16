@@ -22,7 +22,8 @@ def compute_features(dataloader, model, N):
     model.eval()
     # discard the label information in the dataloader
     for i, (input_tensor, _) in enumerate(dataloader):
-        aux = model(input_tensor).data.numpy()
+        input_tensor = input_tensor.cuda()
+        aux = model(input_tensor).data.cpu().numpy()
 
         if i == 0:
             features = np.zeros((N, aux.shape[1]), dtype='float32')
@@ -48,11 +49,13 @@ def compute_features(dataloader, model, N):
 model = vgg16(out=cfg["num_classes"])  # model = vgg16(sobel=True, out=cfg["num_classes"])
 fd = int(model.top_layer.weight.size()[1])
 model.top_layer = None
+model.features = nn.DataParallel(model.features)
+model.cuda()
 
 ckpt_path = cfg["ckpt_path"]
 if os.path.isfile(ckpt_path):
     print("=> loading checkpoint '{}'".format(ckpt_path))
-    checkpoint = torch.load(ckpt_path, map_location=torch.device('cpu'))
+    checkpoint = torch.load(ckpt_path, map_location=torch.device('cuda'))
     # remove top_layer parameters from checkpoint
     for key in list(checkpoint['state_dict'].keys()):
         if 'top_layer' in key:
